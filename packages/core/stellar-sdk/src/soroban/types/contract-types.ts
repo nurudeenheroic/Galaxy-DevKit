@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 /**
  * @fileoverview Soroban contract types and interfaces
  * @description Type definitions for Soroban contract operations
@@ -58,7 +56,7 @@ export interface ContractDeploymentParams {
   wasm: Buffer;
   deployer: Keypair;
   networkPassphrase: string;
-  salt?: xdr.ScVal;
+  salt?: string | Buffer | xdr.ScVal;
 }
 
 export interface ContractInvocationParams {
@@ -107,14 +105,16 @@ export interface SimulationResult {
   memoryBytes: number;
   transactionData: xdr.SorobanTransactionData;
   minResourceFee: string;
-  cost: xdr.Cost;
+  // `xdr.Cost` isn't exported by @stellar/stellar-sdk v14; the RPC's resource
+  // cost shape isn't part of its public types, so this is left unverified.
+  cost: unknown;
 }
 
 export interface ContractEventDetail {
   contractId: string;
   type: string;
   topics: xdr.ScVal[];
-  data: xdr.ScVal[];
+  data: xdr.ScVal;
   timestamp: number;
   ledger: number;
   txHash: string;
@@ -135,7 +135,7 @@ export interface EventSubscription {
 export interface ContractAbi {
   name: string;
   version: string;
-  functions: AbiFunction[];
+  functions: ContractFunction[];
   types: AbiType[];
 }
 

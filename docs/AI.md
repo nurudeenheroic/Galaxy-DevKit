@@ -11,7 +11,7 @@
 - **Oracle Integration**: Price feeds and data oracles for Stellar
 - **Automation Engine**: IFTTT-style automation for DeFi operations
 - **Soroban Smart Contracts**: Rust-based smart contracts
-- **Multi-API Architecture**: REST, GraphQL, WebSocket APIs
+- **Multi-API Architecture**: REST and WebSocket APIs
 - **CLI Tools**: Command-line interface for developers
 - **TypeScript SDK**: Client SDK for easy integration
 
@@ -31,7 +31,6 @@ galaxy-devkit/
 │   │   └── oracles/                  # 🆕 Oracle integrations
 │   ├── api/                          # API layers
 │   │   ├── rest/                     # Express REST API
-│   │   ├── graphql/                  # Apollo GraphQL API
 │   │   └── websocket/                # Socket.io WebSocket API
 │   ├── sdk/                          # Client SDKs
 │   │   └── typescript/               # TypeScript SDK
@@ -55,7 +54,7 @@ Wallets are created with email/password only. Private keys are encrypted (AES-25
 **Files to understand:**
 
 - `packages/core/invisible-wallet/src/services/invisible-wallet.service.ts`
-- `packages/core/invisible-wallet/src/services/key-managment.service.ts`
+- `packages/core/invisible-wallet/src/services/key-management.service.ts`
 - `packages/core/invisible-wallet/src/types/wallet.types.ts`
 - `packages/core/invisible-wallet/src/types/smart-wallet.types.ts` 🆕
 
@@ -76,6 +75,13 @@ Abstraction layer over `@stellar/stellar-sdk` providing simplified interfaces fo
 - `packages/core/stellar-sdk/src/services/stellar-service.ts`
 - `packages/core/stellar-sdk/src/types/stellar-types.ts`
 - `packages/core/stellar-sdk/src/claimable-balances/` - Claimable balance implementation
+- `packages/core/stellar-sdk/src/sponsored-reserves/services/sponsored-reserves-manager.ts` - Sponsored reserve queries
+
+**Sponsored Reserve Query Patterns:**
+
+- `getEntriesSponsoredBy()` combines Horizon account, claimable-balance, and offer results. It paginates each Horizon feed, then applies ordering, cursor, and limit to the merged entries.
+- The merged cursor is `${entryType}:${entryId}`. Keep this composite format when continuing a query across entry types.
+- Data-entry sponsors come from ledger-entry sponsorship metadata via Soroban RPC. Provide `NetworkConfig.rpcUrl` when the default endpoint is not appropriate; unresolved sponsorship data raises `NotSupportedError` rather than appearing as an empty result.
 
 **Claimable Balance Patterns:**
 
@@ -160,7 +166,7 @@ const balance = await service.getClaimableBalance(balanceId);
 ```
 
 **Path Payments (Path Finding & Swap):**
-- **PathPaymentManager** – find paths (strict send / strict receive), get best path, execute swaps, estimate output, slippage protection, price impact, path cache, swap analytics.
+- **PathPaymentManager** – find paths (strict send / strict receive), get best path, execute swaps, estimate output, slippage protection, price impact, path cache, swap analytics. Queries use `Horizon.Server.strictSendPaths` and `strictReceivePaths`. `maxSlippage` is a percent from 0 to 50 (default 1). `PathPaymentError.code` is `INVALID_SLIPPAGE`, `INVALID_AMOUNT`, `SAME_ASSET`, `NO_LIQUIDITY`, `HORIZON_ERROR`, or `SUBMIT_FAILED`. Empty books are not cached.
 - **Strict send**: Fixed source amount; Horizon returns paths with varying destination amount.
 - **Strict receive**: Fixed destination amount; Horizon returns paths with varying source amount.
 - **Path ranking**: Best path by price (max destination for strict send, min source for strict receive).
@@ -391,6 +397,13 @@ Event-driven system for DeFi automation with:
 - `packages/core/automation/src/types/automation-types.ts`
 
 ### 4. DeFi Protocol Integration
+
+Blend pool discovery uses `PoolV2.load()` and `TokenMetadata.load()` to build an
+atomic cached snapshot. Use `getPoolConfig()` to read it; configure
+`poolConfigTtlMs`, `eventLookbackLedgers`, and optional `indexerUrl` through
+`ProtocolConfig`. Without an indexer, borrower discovery paginates retained pool
+events and cannot cover inactive historical borrowers. See
+[Blend discovery](guides/blend-discovery.md) for the response contract and example.
 
 Integration layer for Stellar DeFi protocols providing unified interfaces for:
 
@@ -1134,7 +1147,7 @@ galaxy [command]
 ### APIs
 
 - `packages/api/rest/src/` - REST API implementation
-- `packages/api/graphql/src/` - GraphQL API implementation
+- GraphQL is intentionally withdrawn; use `packages/api/rest/` and the WebSocket API.
 - `packages/api/websocket/src/` - WebSocket API implementation
 
 ## 🎯 Current Development Focus (Phase System)
@@ -1604,7 +1617,7 @@ Tests use mock transport to simulate Ledger device without hardware:
 import { LedgerWallet } from '../LedgerWallet';
 import { MockLedgerTransport } from '../__tests__/MockLedgerTransport';
 
-// Mock is configured in jest.config.js
+// Mock is configured in jest.config.cjs
 const ledger = new LedgerWallet();
 await ledger.connect(); // Uses mock transport in tests
 
@@ -1654,3 +1667,11 @@ await expect(ledger.getPublicKey()).rejects.toThrow();
 - [x] Wallet README includes biometric setup and examples.
 
 TODO: I can add TSDoc/JSDoc comments to the biometric files listed above to raise docstring coverage — confirm and I'll implement those changes and run tests.
+
+## SDK-only REST facade (#487)
+
+`packages/sdk/typescript/src/client.ts` exposes `GalaxyClient`, `BlendClient`, `SoroswapClient` and `AggregatorClient`. The root entry uses native fetch, no server or database imports. `HttpClient` centralizes API-key headers, cancellation, timeouts and typed errors. Methods forward only documented public input fields; never send private keys.
+
+The backend currently selects testnet. Wallets, oracles and automation expose `{ available: false, reason }`, not speculative HTTP methods. Mainnet is rejected. Wire types in `src/types.ts` are hand-maintained because no OpenAPI spec is checked in. JSON dates remain strings; transaction `hash` currently contains unsigned XDR, not a submitted transaction hash. Preserve these distinctions when extending the SDK.
+
+See the package README for the supported route table and unavailable features, and `docs/examples/sdk/` for a local REST example. `client.test.ts` mocks fetch; `rest-contract.test.ts` exercises the real REST router with mocked auth/audit/protocol services. `scripts/smoke.cjs` checks built CJS/ESM and Chromium native ESM/fetch. These checks do not prove live-chain execution.
