@@ -42,9 +42,15 @@ export type {
 export * from './protocols/blend/index.js';
 export * from './protocols/soroswap/index.js';
 export * from './protocols/sdex/index.js';
+export * from './protocols/aquarius/index.js';
 
 // Services
 export { ProtocolFactory, getProtocolFactory } from './services/protocol-factory.js';
+export { OraclePusherService } from './services/OraclePusherService.js';
+export { SDEXAnalyticsEngine } from './services/SDEXAnalyticsEngine.js';
+export { LiquidityAnalyticsService } from './services/LiquidityAnalyticsService.js';
+export * from './types/oracle-pusher.types.js';
+export * from './types/analytics.types.js';
 
 // Constants
 export * from './constants/networks.js';

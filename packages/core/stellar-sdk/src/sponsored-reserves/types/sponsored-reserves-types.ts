@@ -6,8 +6,6 @@
  * @since 2024-12-01
  */
 
-import { Asset, xdr } from '@stellar/stellar-sdk';
-
 /**
  * Types of ledger entries that can be sponsored
  * @type SponsoredEntryType
@@ -341,9 +339,9 @@ export interface SponsoredEntriesQueryOptions {
   entryType?: SponsoredEntryType;
   /** Maximum number of results */
   limit?: number;
-  /** Cursor for pagination */
+  /** Composite cursor from an entry, formatted as `${entryType}:${entryId}`. */
   cursor?: string;
-  /** Order of results */
+  /** Order of the merged results; defaults to ascending composite cursor order. */
   order?: 'asc' | 'desc';
 }
 

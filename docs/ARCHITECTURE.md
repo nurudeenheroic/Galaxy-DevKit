@@ -36,7 +36,6 @@ graph TB
 
     subgraph "API Layer"
         REST[REST API]
-        GraphQL[GraphQL API]
         WS[WebSocket API]
     end
 
@@ -61,15 +60,12 @@ graph TB
     Scripts --> PySdk
 
     TSSDK --> REST
-    TSSDK --> GraphQL
     TSSDK --> WS
     PySdk --> REST
 
     REST --> IW
     REST --> SS
     REST --> AE
-    GraphQL --> IW
-    GraphQL --> DP
     WS --> OS
 
     IW --> Supabase
@@ -1155,11 +1151,18 @@ The DeFi protocols package (`@galaxy/core-defi-protocols`) provides a unified in
 
 ### Architecture Layers
 
+Blend loads pool metadata, reserves, and token metadata from the ledger via the
+Blend SDK, caching the complete snapshot with a TTL and sharing concurrent
+refreshes. Liquidation discovery gets unique users from a configured indexer or
+a bounded, paginated pool-event scan, then evaluates current positions. Event
+history is limited by RPC retention and does not replace a historical indexer.
+See [Blend discovery](guides/blend-discovery.md).
+
 ```mermaid
 graph TD
     subgraph "Application Layer"
         App[Application Code]
-        API[REST/GraphQL APIs]
+        API[REST APIs]
     end
 
     subgraph "DeFi Protocols Package"
@@ -3043,3 +3046,9 @@ graph TB
 
 **Last Updated**: 2024-01-15
 **Version**: 1.0.0
+
+## TypeScript REST SDK (#487, partial delivery)
+
+`GalaxyClient` -> native fetch transport -> mounted `/api/v1/defi` REST routes -> existing protocol services. The client root has no server, database or Node-only dependencies. Conditional exports provide separate ESM and CommonJS builds and declarations. Existing Stellar path-payment helpers remain available through explicit `stellar/*` subpaths.
+
+The SDK models current REST JSON responses rather than importing server types. Wallet, oracle and automation capabilities are unavailable until their routes are mounted/implemented. Network selection remains server-owned (currently testnet); OpenAPI generation awaits a checked-in specification. The package remains private pending completion and release review. See `packages/sdk/typescript/README.md` for detailed limitations.
